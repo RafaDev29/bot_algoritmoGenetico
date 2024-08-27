@@ -95,10 +95,18 @@ def genetic_algorithm(fabricas_data, generaciones=100, tamano_poblacion=50, tasa
 
 # Imprimir los resultados por fábrica
 def print_best_alternative(best_individual, fabricas_data):
+    total_recursos_usados=0
     for i, choice in enumerate(best_individual):
+  
         fabrica_name = fabricas_data[i][0]
         total_recursos = fabricas_data[i][1].iloc[choice].sum()
+        total_recursos_usados += total_recursos
         print(f"{fabrica_name}: Mejor alternativa es la {choice + 1} con un uso total de recursos de {total_recursos}")
+    print("-------------------------------------------------------------------")
+    print(f"Suma total de recursos usados: {total_recursos_usados}")
+        
+    
+
 
 # Ruta del archivo Excel
 excel_file = 'tabla.xlsx'  # Cambia esto por la ruta correcta a tu archivo
