@@ -6,11 +6,14 @@ def read_and_process_excel(filepath):
     # Leer el archivo Excel
     sheet = pd.read_excel(filepath, header=None)
     
+    # Leer la disponibilidad de los recursos (columna B)
+    recursos_data = sheet.iloc[1:31, 1].values  
+    
     # Crear una lista para almacenar los datos de las fábricas
     fabricas_data = []
     
     # Iterar sobre cada bloque de datos de fábricas
-    i = 0
+    i = 31  # Iniciar después de la sección de disponibilidad de recursos, no aumentar los recursos si no se rompera
     while i < len(sheet):
         # Buscar la fila que contiene el nombre de la fábrica
         if isinstance(sheet.iloc[i, 0], str) and sheet.iloc[i, 0].startswith("Fabrica"):
@@ -33,12 +36,27 @@ def read_and_process_excel(filepath):
         
         i += 1  # Mover al siguiente bloque
     
-    return fabricas_data
+    return fabricas_data, recursos_data
 
-# Función de fitness: suma de los recursos utilizados para cada alternativa seleccionada
-def fitness(individual, fabricas_data):
-    total_utilizado = sum(fabricas_data[i][1].iloc[individual[i]].sum() for i in range(len(individual)))
-    return total_utilizado
+# Función de fitness que maximiza el uso de cada recurso individualmente bajo su disponibilidad para cada fábrica
+def fitness(individual, fabricas_data, recursos_data):
+    total_score = 0
+    
+    # Evaluar cada fábrica de manera independiente
+    for i in range(len(individual)):
+        alternativa = fabricas_data[i][1].iloc[individual[i]]
+        score = 0
+        
+        # Evaluar cada recurso individualmente para la fábrica
+        for j in range(len(recursos_data)):
+            if alternativa[j] <= recursos_data[j]:
+                score += alternativa[j]  # Sumar al puntaje si no excede la disponibilidad
+            else:
+                score -= (alternativa[j] - recursos_data[j]) * 1000  # Penalización si excede
+
+        total_score += score
+    
+    return total_score
 
 # Generar un individuo aleatorio
 def generate_individual(fabricas_data):
@@ -64,13 +82,13 @@ def mutate(individual, fabricas_data):
     return individual
 
 # Algoritmo genético
-def genetic_algorithm(fabricas_data, generaciones=100, tamano_poblacion=50, tasa_mutacion=0.1):
+def genetic_algorithm(fabricas_data, recursos_data, generaciones=100, tamano_poblacion=50, tasa_mutacion=0.1):
     # Inicializar la población
     population = [generate_individual(fabricas_data) for _ in range(tamano_poblacion)]
     
     for generation in range(generaciones):
         # Evaluar el fitness de cada individuo
-        fitnesses = [fitness(ind, fabricas_data) for ind in population]
+        fitnesses = [fitness(ind, fabricas_data, recursos_data) for ind in population]
         
         # Mostrar el mejor de la generación actual
         best_individual = population[fitnesses.index(max(fitnesses))]
@@ -89,33 +107,37 @@ def genetic_algorithm(fabricas_data, generaciones=100, tamano_poblacion=50, tasa
         population = new_population[:tamano_poblacion]
     
     # Devolver el mejor individuo después de todas las generaciones
-    fitnesses = [fitness(ind, fabricas_data) for ind in population]
+    fitnesses = [fitness(ind, fabricas_data, recursos_data) for ind in population]
     best_individual = population[fitnesses.index(max(fitnesses))]
     return best_individual, max(fitnesses)
 
-# Imprimir los resultados por fábrica
-def print_best_alternative(best_individual, fabricas_data):
-    total_recursos_usados=0
+# Imprimir los resultados por fábrica con detalles de los recursos utilizados
+def print_best_alternative(best_individual, fabricas_data, recursos_data):
+    total_recursos_usados = 0
     for i, choice in enumerate(best_individual):
-  
         fabrica_name = fabricas_data[i][0]
-        total_recursos = fabricas_data[i][1].iloc[choice].sum()
+        alternativa = fabricas_data[i][1].iloc[choice]
+        total_recursos = alternativa.sum()
         total_recursos_usados += total_recursos
+        
+        # Mostrar detalles de los recursos utilizados
+        recursos_detalle = alternativa.to_dict()
+        
         print(f"{fabrica_name}: Mejor alternativa es la {choice + 1} con un uso total de recursos de {total_recursos}")
+        print(f"  Detalle de recursos utilizados: {recursos_detalle}")
+        print(f"  Disponibilidad máxima de recursos: {recursos_data}")
+    
     print("-------------------------------------------------------------------")
     print(f"Suma total de recursos usados: {total_recursos_usados}")
-        
-    
-
 
 # Ruta del archivo Excel
 excel_file = 'tabla.xlsx'  # Cambia esto por la ruta correcta a tu archivo
 
 # Leer y procesar los datos
-fabricas_data = read_and_process_excel(excel_file)
+fabricas_data, recursos_data = read_and_process_excel(excel_file)
 
 # Ejecutar el algoritmo genético
-mejor_solucion, mejor_fitness = genetic_algorithm(fabricas_data)
+mejor_solucion, mejor_fitness = genetic_algorithm(fabricas_data, recursos_data)
 
 # Imprimir la mejor alternativa para cada fábrica
-print_best_alternative(mejor_solucion, fabricas_data)
+print_best_alternative(mejor_solucion, fabricas_data, recursos_data)
