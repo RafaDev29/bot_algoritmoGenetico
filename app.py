@@ -39,21 +39,26 @@ def read_and_process_excel(filepath):
     return fabricas_data, recursos_data
 
 # Función de fitness que maximiza el uso de cada recurso individualmente bajo su disponibilidad para cada fábrica
+# Función de fitness que maximiza el uso de los recursos globales bajo su disponibilidad compartida
 def fitness(individual, fabricas_data, recursos_data):
     total_score = 0
     
-    # Evaluar cada fábrica de manera independiente
+    # Crear una copia de los recursos disponibles para ir reduciendo conforme se usan
+    recursos_disponibles = recursos_data.copy()
+    
+    # Evaluar cada fábrica
     for i in range(len(individual)):
         alternativa = fabricas_data[i][1].iloc[individual[i]]
         score = 0
         
-        # Evaluar cada recurso individualmente para la fábrica
-        for j in range(len(recursos_data)):
-            if alternativa[j] <= recursos_data[j]:
+        # Evaluar cada recurso
+        for j in range(len(recursos_disponibles)):
+            if alternativa[j] <= recursos_disponibles[j]:
                 score += alternativa[j]  # Sumar al puntaje si no excede la disponibilidad
+                recursos_disponibles[j] -= alternativa[j]  # Reducir la disponibilidad de ese recurso
             else:
-                score -= (alternativa[j] - recursos_data[j]) * 1000  # Penalización si excede
-
+                score -= (alternativa[j] - recursos_disponibles[j]) * 1000  # Penalización si excede
+        
         total_score += score
     
     return total_score
